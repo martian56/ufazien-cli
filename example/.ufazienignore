@@ -1,0 +1,21 @@
+# Files and directories to exclude from deployment
+.git/
+.gitignore
+.ufazien.json
+ufazien.py
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+ENV/
