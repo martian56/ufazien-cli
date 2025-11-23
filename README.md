@@ -1,79 +1,164 @@
 # Ufazien CLI
 
-Command-line interface for working with the Ufazien hosting platform. This Python script allows you to login to your account, create website projects (static or PHP), provision databases, and deploy your files.
+🚀 Command-line interface for deploying web applications on the Ufazien platform.
+
+This repository contains **two official CLI packages** for the Ufazien platform:
+
+- **Python Package** (`ufazien-cli-py`) - Install via PyPI
+- **JavaScript/TypeScript Package** (`ufazien-cli-js`) - Install via npm
+
+Both packages provide the same functionality
+---
+
+## 📦 Installation
+
+### Python Package (Recommended for Python users)
+
+```bash
+pip install ufazien-cli
+```
+
+After installation, use the `ufazien` command:
+
+```bash
+ufazien --help
+```
+
+**Features:**
+- ✨ Beautiful terminal UI powered by [Rich](https://github.com/Textualize/rich)
+- 🎯 Modern CLI framework using [Typer](https://github.com/tiangolo/typer)
+- 📦 Available on [PyPI](https://pypi.org/project/ufazien-cli/)
+
+### JavaScript/TypeScript Package (Recommended for Node.js users)
+
+```bash
+npm install -g ufazien-cli
+```
+
+After installation, use the `ufazienjs` command:
+
+```bash
+ufazienjs --help
+```
+
+**Features:**
+- ✨ Beautiful terminal UI with colors and prompts
+- 🎯 Modern CLI framework using Commander.js
+- 📦 Available on [npm](https://www.npmjs.com/package/ufazien-cli)
+- 🔷 Built with TypeScript
 
 ---
 
-## Requirements ✅
-- Python 3.6+
-- Internet access
-- And a cool project idea :)
+## 🚀 Quick Start
 
----
+### 1. Login
 
-## Setup / Install
-1. Clone or download this repository.
-2. Open a terminal and change to the repository folder.
-
-Example (PowerShell):
-```powershell
-cd ~\websites\ufazien-cli
-python -V # verify Python 3 is available
+**Python:**
+```bash
+ufazien login
 ```
 
-The CLI is a single file: `ufazien.py`. You can run it directly with Python.
-
----
-
-## Quickstart / Common workflows 🚀
-
-1. Login
-
-```powershell
-python ufazien.py login
+**JavaScript:**
+```bash
+ufazienjs login
 ```
 
-You will be prompted for an email and password.
+You'll be prompted for your email and password
 
-2. Create a website
+### 2. Create a Website
 
-Change into the project directory where you want your website files to live (the CLI will create helpful templates and files in the current directory):
+Navigate to your project directory and run:
 
-```powershell
-cd c:\path\to\my-project
-python \path\to\ufazien-cli\ufazien.py create
+**Python:**
+```bash
+ufazien create
 ```
 
-You will be prompted for:
-- Website name
-- Subdomain
-- Website type: static (HTML/CSS/JS) or PHP
-- If you choose PHP, the CLI asks whether you want a database and, if so, it will provision one.
+**JavaScript:**
+```bash
+ufazienjs create
+```
 
-The `create` command will:
-- Create a website and optionally a database
-- Create a project boilerplate 
-- Create `.gitignore` and `.ufazienignore`
-- Save `.ufazien.json` with the website metadata
+The CLI will guide you through:
+- Website name and subdomain
+- Website type (Static or PHP)
+- Database creation (for PHP projects)
+- Project structure generation
 
-Once created, you can add your files and then deploy.
+### 3. Deploy Your Website
 
-3. Deploy website
+From your project directory:
 
-From the same project directory (with `.ufazien.json` created by `create`):
+**Python:**
+```bash
+ufazien deploy
+```
 
-```powershell
-python \path\to\ufazien-cli\ufazien.py deploy
+**JavaScript:**
+```bash
+ufazienjs deploy
 ```
 
 This will:
-- Create a ZIP archive of the current project, excluding the files in `.ufazienignore`
-- Upload the ZIP to your Ufazien site
-- Trigger a deployment via the API
+1. Create a ZIP archive (excluding files in `.ufazienignore`)
+2. Upload files to your website
+3. Trigger deployment
 
-4. Logout
+### 4. Check Status
 
-```powershell
-python ufazien.py logout
+**Python:**
+```bash
+ufazien status
 ```
 
+**JavaScript:**
+```bash
+ufazienjs status
+```
+
+### 5. Logout
+
+**Python:**
+```bash
+ufazien logout
+```
+
+**JavaScript:**
+```bash
+ufazienjs logout
+```
+
+---
+
+## 📋 Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `login` | Login to your Ufazien account |
+| `logout` | Logout from your account |
+| `create` | Create a new website project |
+| `deploy` | Deploy your website |
+| `status` | Check login status and profile |
+
+---
+
+## 🆘 Support
+
+For issues and questions:
+- **GitHub Issues**: [https://github.com/martian56/ufazien-cli/issues](https://github.com/martian56/ufazien-cli/issues)
+- **Ufazien Support**: [https://ufazien.com/support](https://ufazien.com/support)
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+## 🔗 Links
+
+- **Homepage**: [https://ufazien.com](https://ufazien.com)
+- **Python Package**: [https://pypi.org/project/ufazien-cli/](https://pypi.org/project/ufazien-cli/)
+- **npm Package**: [https://www.npmjs.com/package/ufazien-cli](https://www.npmjs.com/package/ufazien-cli)
+- **Repository**: [https://github.com/martian56/ufazien-cli](https://github.com/martian56/ufazien-cli)

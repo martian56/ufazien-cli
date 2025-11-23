@@ -1,35 +1,34 @@
-# Ufazien CLI
+# Ufazien CLI (JavaScript/TypeScript)
 
 🚀 A Command-line interface for deploying web applications on the Ufazien platform.
 
 ## Features
 
-- ✨ Beautiful terminal UI powered by [Rich](https://github.com/Textualize/rich)
-- 🎯 Modern CLI framework using [Typer](https://github.com/tiangolo/typer)
+- ✨ Beautiful terminal UI with colors and prompts
+- 🎯 Modern CLI framework using Commander.js
 - 🔐 Secure authentication with token management
 - 📦 Easy project creation and deployment
 - 🗄️ Database provisioning support
 - 📝 Automatic project structure generation
+- 📦 Built with TypeScript
 
 ## Installation
+
+### From npm
+
+```bash
+npm install -g ufazien-cli
+```
+
+After installation, use the `ufazienjs` command.
 
 ### From Source
 
 ```bash
+# Clone the repository
 git clone https://github.com/martian56/ufazien-cli.git
-cd ufazien-cli-py
-
-# Install in development mode
-pip install -e .
-
-# Or install in production mode
-pip install .
-```
-
-### From PyPI
-
-```bash
-pip install ufazien-cli
+cd ufazien-cli-js
+npm install
 ```
 
 ## Usage
@@ -39,7 +38,7 @@ pip install ufazien-cli
 Authenticate with your Ufazien account:
 
 ```bash
-ufazien login
+ufazienjs login
 ```
 
 You'll be prompted for your email and password.
@@ -49,7 +48,7 @@ You'll be prompted for your email and password.
 Create a new website project in the current directory:
 
 ```bash
-ufazien create
+ufazienjs create
 ```
 
 The CLI will guide you through:
@@ -63,7 +62,7 @@ The CLI will guide you through:
 Deploy your website to Ufazien:
 
 ```bash
-ufazien deploy
+ufazienjs deploy
 ```
 
 This will:
@@ -76,7 +75,7 @@ This will:
 Check your login status and profile:
 
 ```bash
-ufazien status
+ufazienjs status
 ```
 
 ### Logout
@@ -84,16 +83,16 @@ ufazien status
 Logout from your account:
 
 ```bash
-ufazien logout
+ufazienjs logout
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `login` | Login to your Ufazien account |
-| `logout` | Logout from your account |
-| `create` | Create a new website project |
-| `deploy` | Deploy your website |
-| `status` | Check login status and profile |
+| `ufazienjs login` | Login to your Ufazien account |
+| `ufazienjs logout` | Logout from your account |
+| `ufazienjs create` | Create a new website project |
+| `ufazienjs deploy` | Deploy your website |
+| `ufazienjs status` | Check login status and profile |
 
