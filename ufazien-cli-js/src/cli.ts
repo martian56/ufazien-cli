@@ -17,6 +17,7 @@ import {
   findWebsiteConfig,
   saveWebsiteConfig,
   generateRandomAlphabetic,
+  sanitizeDatabaseName,
 } from './utils.js';
 import {
   createConfigFile,
@@ -257,7 +258,8 @@ program
         process.stdout.write(chalk.green('\nCreating database...'));
         try {
           const randomChars = generateRandomAlphabetic(6);
-          const dbName = `${subdomain}_${randomChars}_db`;
+          const rawDbName = `${subdomain}_${randomChars}_db`;
+          const dbName = sanitizeDatabaseName(rawDbName);
           database = await client.createDatabase(dbName, 'mysql', `Database for ${name}`);
           console.log(chalk.green('\n✓ Database created:'), database.name);
           console.log(`  Status: ${database.status}`);

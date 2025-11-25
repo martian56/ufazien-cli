@@ -72,3 +72,32 @@ export function generateRandomAlphabetic(length: number = 6): string {
   return result;
 }
 
+/**
+ * Sanitize a database name to meet typical database/identifier rules.
+ * - Converts to lowercase
+ * - Replaces invalid characters with underscore
+ * - Collapses multiple underscores
+ * - Trims leading/trailing underscores
+ * - Limits length to 63 characters (safe for most DBs)
+ */
+export function sanitizeDatabaseName(name: string, maxLength: number = 63): string {
+  if (!name) return 'database';
+  // Lowercase
+  let sanitized = name.toLowerCase();
+  // Replace invalid characters with underscore (allow a-z, 0-9, _)
+  sanitized = sanitized.replace(/[^a-z0-9_]/g, '_');
+  // Collapse multiple underscores into one
+  sanitized = sanitized.replace(/_+/g, '_');
+  // Trim underscores from start and end
+  sanitized = sanitized.replace(/^_+|_+$/g, '');
+  if (!sanitized) sanitized = 'database';
+  // Trim to max length
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.slice(0, maxLength);
+    // ensure we don't cut off in the middle, optionally trim trailing underscore
+    sanitized = sanitized.replace(/_+$/g, '');
+    if (!sanitized) sanitized = 'database';
+  }
+  return sanitized;
+}
+
