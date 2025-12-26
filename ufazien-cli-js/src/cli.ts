@@ -23,6 +23,7 @@ import {
   createConfigFile,
   createEnvFile,
   createGitignore,
+  createReadmeSection,
   createUfazienignore,
   createPhpProjectStructure,
   createStaticProjectStructure,
@@ -339,12 +340,25 @@ program
         }
       }
 
-      // Create project structure
-      process.stdout.write(chalk.green('\nCreating project structure...'));
-      if (websiteType === 'php') {
-        const hasDb = database !== null && database.status === 'active';
-        createPhpProjectStructure(projectDir, name, hasDb);
+      // Ask if user wants to create project structure
+      const createStructureAnswer = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'createStructure',
+          message: 'Create project structure?',
+          default: true,
+        },
+      ]);
+      const createStructure = createStructureAnswer.createStructure;
 
+      // Always create essential files (regardless of create_structure choice)
+      process.stdout.write(chalk.green('\nCreating essential files...'));
+      // Always create .gitignore and README.md (append if exists)
+      createGitignore(projectDir);
+      createReadmeSection(projectDir, websiteType, name, buildFolder);
+      
+      if (websiteType === 'php') {
+        // For PHP: create .env (if database) and .ufazienignore
         if (database) {
           const username = database.username || '';
           const password = database.password || '';
@@ -356,49 +370,61 @@ program
               username,
               password,
             });
-            createConfigFile(projectDir, {
-              name: database.name,
-              host: database.host || 'mysql.ufazien.com',
-              port: database.port || 3306,
-              username,
-              password,
-            });
             console.log(chalk.green('\n✓ Created .env file with database credentials'));
-            console.log(chalk.green('✓ Created config.php'));
           } else {
             console.log(chalk.yellow('\n⚠ Skipping .env file creation - database credentials not yet available'));
-            console.log(chalk.dim('Please create .env manually with database credentials once provisioning completes.'));
-            createConfigFile(projectDir, {
-              name: database.name,
-              host: database.host || 'mysql.ufazien.com',
-              port: database.port || 3306,
-              username: '',
-              password: '',
-            });
           }
         }
-      } else if (websiteType === 'build') {
-        createBuildProjectStructure(projectDir, name);
-      } else {
-        createStaticProjectStructure(projectDir, name);
-      }
-
-      createGitignore(projectDir);
-      // .ufazienignore not needed for build projects (we zip only the build folder)
-      if (websiteType !== 'build') {
+        createUfazienignore(projectDir);
+      } else if (websiteType === 'static') {
+        // For Static: create .ufazienignore
         createUfazienignore(projectDir);
       }
+      // For Build: no .ufazienignore needed
       
-      if (websiteType === 'build') {
-        console.log(chalk.green('✓ Created project files:'));
-        console.log('  • README.md (deployment instructions)');
-        console.log('  • .gitignore');
-        console.log('  • .ufazien.json');
-        console.log(chalk.yellow(`\nℹ Build Project Setup:`));
-        console.log(`  1. Build your project (creates ${buildFolder} folder)`);
-        console.log(`  2. Run ${chalk.cyan('ufazienjs deploy')} to deploy the ${buildFolder} folder`);
-      } else {
+      console.log(chalk.green('✓ Created essential files'));
+
+      // Create optional boilerplate files (only if user wants project structure)
+      if (createStructure) {
+        process.stdout.write(chalk.green('\nCreating project structure...'));
+        if (websiteType === 'php') {
+          const hasDb = database !== null && database.status === 'active';
+          createPhpProjectStructure(projectDir, name, hasDb);
+          
+          if (database) {
+            const username = database.username || '';
+            const password = database.password || '';
+            if (username && password) {
+              createConfigFile(projectDir, {
+                name: database.name,
+                host: database.host || 'mysql.ufazien.com',
+                port: database.port || 3306,
+                username,
+                password,
+              });
+              console.log(chalk.green('✓ Created config.php'));
+            } else {
+              createConfigFile(projectDir, {
+                name: database.name,
+                host: database.host || 'mysql.ufazien.com',
+                port: database.port || 3306,
+                username: '',
+                password: '',
+              });
+            }
+          }
+        } else if (websiteType === 'static') {
+          createStaticProjectStructure(projectDir, name);
+        }
+        // Build projects don't need boilerplate files
+        
         console.log(chalk.green('✓ Created project structure'));
+        
+        if (websiteType === 'build') {
+          console.log(chalk.yellow(`\nℹ Build Project Setup:`));
+          console.log(`  1. Build your project (creates ${buildFolder} folder)`);
+          console.log(`  2. Run ${chalk.cyan('ufazienjs deploy')} to deploy the ${buildFolder} folder`);
+        }
       }
 
       // Save config

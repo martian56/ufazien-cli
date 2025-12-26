@@ -164,6 +164,116 @@ build/
   }
 }
 
+export function createReadmeSection(
+  projectDir: string,
+  websiteType: string,
+  websiteName: string,
+  buildFolder?: string
+): void {
+  const readmePath = path.join(projectDir, 'README.md');
+  
+  if (websiteType === 'build') {
+    if (!fs.existsSync(readmePath)) {
+      const readmeContent = `# ${websiteName}
+
+This project is configured for deployment to Ufazien Hosting.
+
+## Build and Deploy
+
+1. Build your project (this will create a \`dist\` or \`build\` folder):
+\`\`\`bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+\`\`\`
+
+2. Deploy to Ufazien:
+\`\`\`bash
+ufazienjs deploy
+\`\`\`
+
+The deployment will automatically upload the contents of your build folder.
+`;
+      fs.writeFileSync(readmePath, readmeContent);
+    } else {
+      const existingContent = fs.readFileSync(readmePath, 'utf-8');
+      if (!existingContent.includes('Ufazien Hosting')) {
+        const ufazienSection = `
+
+---
+
+## Ufazien Deployment
+
+This project is configured for deployment to Ufazien Hosting.
+
+### Build and Deploy
+
+1. Build your project (this will create a \`dist\` or \`build\` folder):
+\`\`\`bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+\`\`\`
+
+2. Deploy to Ufazien:
+\`\`\`bash
+ufazienjs deploy
+\`\`\`
+
+The deployment will automatically upload the contents of your build folder.
+`;
+        fs.appendFileSync(readmePath, ufazienSection);
+      }
+    }
+  } else {
+    // For PHP and Static projects
+    if (!fs.existsSync(readmePath)) {
+      const readmeContent = `# ${websiteName}
+
+This project is configured for deployment to Ufazien Hosting.
+
+## Deploy
+
+Deploy your website to Ufazien:
+
+\`\`\`bash
+ufazienjs deploy
+\`\`\`
+
+Your website will be available at your configured subdomain.
+`;
+      fs.writeFileSync(readmePath, readmeContent);
+    } else {
+      const existingContent = fs.readFileSync(readmePath, 'utf-8');
+      if (!existingContent.includes('Ufazien Hosting')) {
+        const ufazienSection = `
+
+---
+
+## Ufazien Deployment
+
+This project is configured for deployment to Ufazien Hosting.
+
+### Deploy
+
+Deploy your website to Ufazien:
+
+\`\`\`bash
+ufazienjs deploy
+\`\`\`
+
+Your website will be available at your configured subdomain.
+`;
+        fs.appendFileSync(readmePath, ufazienSection);
+      }
+    }
+  }
+}
+
 export function createUfazienignore(projectDir: string): void {
   const ufazienignoreContent = `# Files and directories to exclude from deployment
 .git/

@@ -28,6 +28,7 @@ from ufazien.project import (
     create_config_file,
     create_env_file,
     create_gitignore,
+    create_readme_section,
     create_ufazienignore,
     create_php_project_structure,
     create_static_project_structure,
@@ -273,12 +274,17 @@ def create(
                 console.print(f"[red]✗ Error creating database: {e}[/red]")
                 console.print("[dim]You can create a database later from the web dashboard.[/dim]")
 
-    # Create project structure
-    with console.status("[bold green]Creating project structure...", spinner="dots"):
+    # Ask if user wants to create project structure
+    create_structure = Confirm.ask("\nCreate project structure?", default=True)
+    
+    # Always create essential files (regardless of create_structure choice)
+    with console.status("[bold green]Creating essential files...", spinner="dots"):
+        # Always create .gitignore and README.md (append if exists)
+        create_gitignore(project_dir)
+        create_readme_section(project_dir, website_type, name, build_folder)
+        
         if website_type == 'php':
-            has_db = database_obj is not None and database_obj.get('status') == 'active'
-            create_php_project_structure(project_dir, name, has_database=has_db)
-
+            # For PHP: create .env (if database) and .ufazienignore
             if database_obj:
                 username = database_obj.get('username', '')
                 password = database_obj.get('password', '')
@@ -290,39 +296,48 @@ def create(
                         'username': username,
                         'password': password
                     })
-                    create_config_file(project_dir, database_obj)
                     console.print("[green]✓ Created .env file with database credentials[/green]")
-                    console.print("[green]✓ Created config.php[/green]")
                 else:
                     console.print("[yellow]⚠ Skipping .env file creation - database credentials not yet available[/yellow]")
-                    console.print("[dim]Please create .env manually with database credentials once provisioning completes.[/dim]")
-                    create_config_file(project_dir, {
-                        'host': database_obj.get('host', 'mysql.ufazien.com'),
-                        'port': database_obj.get('port', 3306),
-                        'name': database_obj.get('name', ''),
-                        'username': '',
-                        'password': ''
-                    })
-        elif website_type == 'build':
-            create_build_project_structure(project_dir, name)
-        else:
-            create_static_project_structure(project_dir, name)
-
-        create_gitignore(project_dir)
-        # .ufazienignore not needed for build projects (we zip only the build folder)
-        if website_type != 'build':
             create_ufazienignore(project_dir)
+        elif website_type == 'static':
+            # For Static: create .ufazienignore
+            create_ufazienignore(project_dir)
+        # For Build: no .ufazienignore needed
         
-        if website_type == 'build':
-            console.print("[green]✓ Created project files:[/green]")
-            console.print("  • README.md (deployment instructions)")
-            console.print("  • .gitignore")
-            console.print("  • .ufazien.json")
-            console.print(f"\n[yellow]ℹ Build Project Setup:[/yellow]")
-            console.print(f"  1. Build your project (creates {build_folder} folder)")
-            console.print(f"  2. Run [cyan]ufazien deploy[/cyan] to deploy the {build_folder} folder")
-        else:
+        console.print("[green]✓ Created essential files[/green]")
+    
+    # Create optional boilerplate files (only if user wants project structure)
+    if create_structure:
+        with console.status("[bold green]Creating project structure...", spinner="dots"):
+            if website_type == 'php':
+                has_db = database_obj is not None and database_obj.get('status') == 'active'
+                create_php_project_structure(project_dir, name, has_database=has_db)
+                
+                if database_obj:
+                    username = database_obj.get('username', '')
+                    password = database_obj.get('password', '')
+                    if username and password:
+                        create_config_file(project_dir, database_obj)
+                        console.print("[green]✓ Created config.php[/green]")
+                    else:
+                        create_config_file(project_dir, {
+                            'host': database_obj.get('host', 'mysql.ufazien.com'),
+                            'port': database_obj.get('port', 3306),
+                            'name': database_obj.get('name', ''),
+                            'username': '',
+                            'password': ''
+                        })
+            elif website_type == 'static':
+                create_static_project_structure(project_dir, name)
+            # Build projects don't need boilerplate files
+            
             console.print("[green]✓ Created project structure[/green]")
+            
+            if website_type == 'build':
+                console.print(f"\n[yellow]ℹ Build Project Setup:[/yellow]")
+                console.print(f"  1. Build your project (creates {build_folder} folder)")
+                console.print(f"  2. Run [cyan]ufazien deploy[/cyan] to deploy the {build_folder} folder")
 
     # Save config
     config = {

@@ -162,6 +162,119 @@ build/
                 f.write('\n' + '\n'.join(additions) + '\n')
 
 
+def create_readme_section(project_dir: str, website_type: str, website_name: str, build_folder: Optional[str] = None) -> None:
+    """Create or append README.md with Ufazien deployment section."""
+    project_path = Path(project_dir)
+    readme_path = project_path / 'README.md'
+    
+    if website_type == 'build':
+        # For build projects, use the existing create_build_project_structure logic
+        if not readme_path.exists():
+            readme_content = f"""# {website_name}
+
+This project is configured for deployment to Ufazien Hosting.
+
+## Build and Deploy
+
+1. Build your project (this will create a `dist` or `build` folder):
+```bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+```
+
+2. Deploy to Ufazien:
+```bash
+ufazien deploy
+```
+
+The deployment will automatically upload the contents of your build folder.
+"""
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(readme_content)
+        else:
+            # Append Ufazien deployment section to existing README
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                existing_content = f.read()
+            
+            if 'Ufazien Hosting' not in existing_content:
+                ufazien_section = f"""
+
+---
+
+## Ufazien Deployment
+
+This project is configured for deployment to Ufazien Hosting.
+
+### Build and Deploy
+
+1. Build your project (this will create a `dist` or `build` folder):
+```bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+```
+
+2. Deploy to Ufazien:
+```bash
+ufazien deploy
+```
+
+The deployment will automatically upload the contents of your build folder.
+"""
+                with open(readme_path, 'a', encoding='utf-8') as f:
+                    f.write(ufazien_section)
+    else:
+        # For PHP and Static projects, append a simple deployment section
+        if not readme_path.exists():
+            readme_content = f"""# {website_name}
+
+This project is configured for deployment to Ufazien Hosting.
+
+## Deploy
+
+Deploy your website to Ufazien:
+
+```bash
+ufazien deploy
+```
+
+Your website will be available at your configured subdomain.
+"""
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(readme_content)
+        else:
+            # Append Ufazien deployment section to existing README
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                existing_content = f.read()
+            
+            if 'Ufazien Hosting' not in existing_content:
+                ufazien_section = f"""
+
+---
+
+## Ufazien Deployment
+
+This project is configured for deployment to Ufazien Hosting.
+
+### Deploy
+
+Deploy your website to Ufazien:
+
+```bash
+ufazien deploy
+```
+
+Your website will be available at your configured subdomain.
+"""
+                with open(readme_path, 'a', encoding='utf-8') as f:
+                    f.write(ufazien_section)
+
+
 def create_ufazienignore(project_dir: str) -> None:
     """Create .ufazienignore file."""
     ufazienignore_content = """# Files and directories to exclude from deployment
