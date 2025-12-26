@@ -125,6 +125,34 @@ def create_zip(project_dir: str, output_path: Optional[str] = None) -> str:
                     continue
 
     return output_path
+
+
+def create_zip_from_folder(project_dir: str, folder_name: str, output_path: Optional[str] = None) -> str:
+    """Create a ZIP file from a specific folder (e.g., dist, build)."""
+    project_path = Path(project_dir).resolve()
+    build_folder_path = project_path / folder_name
+
+    if not build_folder_path.exists():
+        raise Exception(f"Build folder '{folder_name}' not found. Please build your project first.")
+
+    if not build_folder_path.is_dir():
+        raise Exception(f"'{folder_name}' is not a directory.")
+
+    if output_path is None:
+        output_path = tempfile.mktemp(suffix='.zip')
+
+    with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(build_folder_path):
+            for file in files:
+                file_path = Path(root) / file
+                try:
+                    # Create relative path from build folder root
+                    arcname = file_path.relative_to(build_folder_path)
+                    zipf.write(file_path, arcname)
+                except ValueError:
+                    continue
+
+    return output_path
     
 def subdomain_sanitize(subdomain: str) -> str:
     name = subdomain.lower()

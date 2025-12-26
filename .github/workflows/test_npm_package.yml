@@ -1,0 +1,47 @@
+name: Test npm Package
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ufazien-cli-js/**'
+      - '.github/workflows/test_npm_package.yml'
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['18', '20', '22']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        working-directory: ./ufazien-cli-js
+        run: npm ci
+
+      - name: Build package
+        working-directory: ./ufazien-cli-js
+        run: npm run build
+
+      - name: Type check
+        working-directory: ./ufazien-cli-js
+        run: npx tsc --noEmit
+
+      - name: Test package installation
+        working-directory: ./ufazien-cli-js
+        run: |
+          npm pack
+          npm install -g ufazien-cli-*.tgz
+
+      - name: Verify CLI command
+        run: |
+          ufazienjs --help

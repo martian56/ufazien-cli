@@ -12,6 +12,7 @@ export interface WebsiteConfig {
   website_type: string;
   domain: string;
   database_id?: string;
+  build_folder?: string;
 }
 
 export function findWebsiteConfig(projectDir: string): WebsiteConfig | null {

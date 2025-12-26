@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag or input
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get package versions
+        id: get_package_versions
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            # Extract versions from package files
+            PYTHON_VERSION=$(grep -E '^version\s*=' ufazien-cli-py/pyproject.toml | sed -E 's/.*version\s*=\s*"([^"]+)".*/\1/' | sed -E 's/.*version\s*=\s*([0-9.]+).*/\1/')
+            NPM_VERSION=$(grep -E '"version"' ufazien-cli-js/package.json | head -1 | sed -E 's/.*"version"\s*:\s*"([^"]+)".*/\1/')
+            echo "python_version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
+            echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "python_version=${{ steps.get_version.outputs.version }}" >> $GITHUB_OUTPUT
+            echo "npm_version=${{ steps.get_version.outputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: Release ${{ steps.get_version.outputs.tag }}
+          body: |
+            ## Changes in ${{ steps.get_version.outputs.tag }}
+            
+            ### Python Package
+            - Version: ${{ steps.get_package_versions.outputs.python_version }}
+            - Install: `pip install ufazien-cli==${{ steps.get_package_versions.outputs.python_version }}`
+            
+            ### npm Package
+            - Version: ${{ steps.get_package_versions.outputs.npm_version }}
+            - Install: `npm install -g ufazien-cli@${{ steps.get_package_versions.outputs.npm_version }}`
+            
+            ## Installation
+            
+            **Python:**
+            ```bash
+            pip install ufazien-cli
+            ```
+            
+            **Node.js:**
+            ```bash
+            npm install -g ufazien-cli
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

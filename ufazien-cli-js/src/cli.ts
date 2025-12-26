@@ -26,9 +26,10 @@ import {
   createUfazienignore,
   createPhpProjectStructure,
   createStaticProjectStructure,
+  createBuildProjectStructure,
   DatabaseCredentials,
 } from './project.js';
-import { createZip } from './zip.js';
+import { createZip, createZipFromFolder } from './zip.js';
 
 // Get version from package.json
 const __filename = fileURLToPath(import.meta.url);
@@ -203,16 +204,18 @@ program
           choices: [
             { name: 'Static (HTML/CSS/JavaScript)', value: 'static' },
             { name: 'PHP', value: 'php' },
+            { name: 'Build (Vite/React/etc. - deploy dist/build folder)', value: 'build' },
           ],
         },
       ]);
       websiteType = answer.type;
-    } else if (!['static', 'php'].includes(websiteType)) {
-      console.error(chalk.red("✗ Error: Website type must be 'static' or 'php'."));
+    } else if (!['static', 'php', 'build'].includes(websiteType)) {
+      console.error(chalk.red("✗ Error: Website type must be 'static', 'php', or 'build'."));
       process.exit(1);
     }
 
     let needsDatabase = false;
+    let buildFolder: string | undefined = undefined;
     if (websiteType === 'php') {
       if (options.database) {
         needsDatabase = true;
@@ -227,6 +230,16 @@ program
         ]);
         needsDatabase = answer.database;
       }
+    } else if (websiteType === 'build') {
+      const answer = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'buildFolder',
+          message: 'What is your build folder named?',
+          default: 'dist',
+        },
+      ]);
+      buildFolder = answer.buildFolder || 'dist';
     }
 
     const descAnswer = await inquirer.prompt([
@@ -239,13 +252,14 @@ program
     ]);
     const description = descAnswer.description || undefined;
 
-    // Create website
+    // Create website (build projects use 'static' type on the backend)
+    const apiWebsiteType = websiteType === 'build' ? 'static' : websiteType;
     try {
       process.stdout.write(chalk.green('Creating website...'));
       const website = await client.createWebsite(
         name,
         subdomain,
-        websiteType,
+        apiWebsiteType,
         description
       );
       console.log(chalk.green('\n✓ Website created:'), website.name);
@@ -363,16 +377,32 @@ program
             });
           }
         }
+      } else if (websiteType === 'build') {
+        createBuildProjectStructure(projectDir, name);
       } else {
         createStaticProjectStructure(projectDir, name);
       }
 
       createGitignore(projectDir);
-      createUfazienignore(projectDir);
-      console.log(chalk.green('✓ Created project structure'));
+      // .ufazienignore not needed for build projects (we zip only the build folder)
+      if (websiteType !== 'build') {
+        createUfazienignore(projectDir);
+      }
+      
+      if (websiteType === 'build') {
+        console.log(chalk.green('✓ Created project files:'));
+        console.log('  • README.md (deployment instructions)');
+        console.log('  • .gitignore');
+        console.log('  • .ufazien.json');
+        console.log(chalk.yellow(`\nℹ Build Project Setup:`));
+        console.log(`  1. Build your project (creates ${buildFolder} folder)`);
+        console.log(`  2. Run ${chalk.cyan('ufazienjs deploy')} to deploy the ${buildFolder} folder`);
+      } else {
+        console.log(chalk.green('✓ Created project structure'));
+      }
 
       // Save config
-      const config = {
+      const config: any = {
         website_id: website.id,
         website_name: website.name,
         subdomain,
@@ -380,6 +410,9 @@ program
         domain: website.domain.name,
         database_id: database?.id,
       };
+      if (buildFolder) {
+        config.build_folder = buildFolder;
+      }
       saveWebsiteConfig(projectDir, config);
 
       // Success message
@@ -421,10 +454,20 @@ program
     console.log(`Website: ${chalk.bold(config.website_name || 'Unknown')}`);
     console.log(`Website ID: ${chalk.dim(websiteId)}\n`);
 
+    // Check if this is a build project
+    const websiteType = config.website_type || '';
+    const buildFolder = config.build_folder;
+
     // Create ZIP
     try {
       process.stdout.write(chalk.green('Creating ZIP archive...'));
-      const zipPath = await createZip(projectDir);
+      let zipPath: string;
+      if (websiteType === 'build' && buildFolder) {
+        console.log(chalk.dim(`\nDeploying build folder: ${buildFolder}`));
+        zipPath = await createZipFromFolder(projectDir, buildFolder);
+      } else {
+        zipPath = await createZip(projectDir);
+      }
       console.log(chalk.green('\n✓ Created ZIP archive'));
 
       // Upload files
