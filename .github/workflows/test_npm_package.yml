@@ -1,0 +1,46 @@
+name: Test npm Package
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ufazien-cli-js/**'
+      - '.github/workflows/test_npm_package.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./ufazien-cli-js
+        run: npm ci
+
+      - name: Build package
+        working-directory: ./ufazien-cli-js
+        run: npm run build
+
+      - name: Test package installation
+        working-directory: ./ufazien-cli-js
+        shell: bash
+        run: |
+          npm pack
+          PACKAGE_FILE=$(ls ufazien-cli-*.tgz 2>/dev/null | head -1)
+          if [ -n "$PACKAGE_FILE" ]; then
+            npm install -g "$PACKAGE_FILE"
+          else
+            echo "Package file not found"
+            exit 1
+          fi
+
+      - name: Verify CLI command
+        run: |
+          ufazienjs --help || ufazienjs -V

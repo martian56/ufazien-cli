@@ -17,6 +17,7 @@ from rich.table import Table
 from ufazien.client import UfazienAPIClient
 from ufazien.utils import (
     create_zip,
+    create_zip_from_folder,
     find_website_config,
     generate_random_alphabetic,
     save_website_config,
@@ -29,6 +30,7 @@ from ufazien.project import (
     create_ufazienignore,
     create_php_project_structure,
     create_static_project_structure,
+    create_build_project_structure,
 )
 
 app = typer.Typer(
@@ -135,29 +137,41 @@ def create(
         console.print("\n[bold]Website type:[/bold]")
         console.print("1. Static (HTML/CSS/JavaScript)")
         console.print("2. PHP")
-        choice = Prompt.ask("Choose website type", choices=["1", "2"], default="1")
-        website_type = 'static' if choice == '1' else 'php'
+        console.print("3. Build (Vite/React/etc. - deploy dist/build folder)")
+        choice = Prompt.ask("Choose website type", choices=["1", "2", "3"], default="1")
+        if choice == '1':
+            website_type = 'static'
+        elif choice == '2':
+            website_type = 'php'
+        else:
+            website_type = 'build'
     else:
-        if website_type not in ['static', 'php']:
-            console.print("[red]✗ Error: Website type must be 'static' or 'php'.[/red]")
+        if website_type not in ['static', 'php', 'build']:
+            console.print("[red]✗ Error: Website type must be 'static', 'php', or 'build'.[/red]")
             raise typer.Exit(1)
 
     needs_database = False
+    build_folder = None
     if website_type == 'php':
         if database:
             needs_database = True
         else:
             needs_database = Confirm.ask("Do you want a database?", default=True)
+    elif website_type == 'build':
+        build_folder = Prompt.ask("What is your build folder named?", default="dist")
+        if not build_folder:
+            build_folder = "dist"
 
     description = Prompt.ask("Description (optional)", default="", show_default=False)
 
-    # Create website
+    # Create website (build projects use 'static' type on the backend)
+    api_website_type = 'static' if website_type == 'build' else website_type
     with console.status("[bold green]Creating website...", spinner="dots"):
         try:
             website = client.create_website(
                 name=name,
                 subdomain=subdomain,
-                website_type=website_type,
+                website_type=api_website_type,
                 description=description if description else None
             )
             console.print(f"[green]✓ Website created:[/green] {website['name']}")
@@ -271,12 +285,26 @@ def create(
                         'username': '',
                         'password': ''
                     })
+        elif website_type == 'build':
+            create_build_project_structure(project_dir, name)
         else:
             create_static_project_structure(project_dir, name)
 
         create_gitignore(project_dir)
-        create_ufazienignore(project_dir)
-        console.print("[green]✓ Created project structure[/green]")
+        # .ufazienignore not needed for build projects (we zip only the build folder)
+        if website_type != 'build':
+            create_ufazienignore(project_dir)
+        
+        if website_type == 'build':
+            console.print("[green]✓ Created project files:[/green]")
+            console.print("  • README.md (deployment instructions)")
+            console.print("  • .gitignore")
+            console.print("  • .ufazien.json")
+            console.print(f"\n[yellow]ℹ Build Project Setup:[/yellow]")
+            console.print(f"  1. Build your project (creates {build_folder} folder)")
+            console.print(f"  2. Run [cyan]ufazien deploy[/cyan] to deploy the {build_folder} folder")
+        else:
+            console.print("[green]✓ Created project structure[/green]")
 
     # Save config
     config = {
@@ -287,6 +315,8 @@ def create(
         'domain': website['domain']['name'],
         'database_id': database_obj['id'] if database_obj else None
     }
+    if build_folder:
+        config['build_folder'] = build_folder
     save_website_config(project_dir, config)
 
     # Success message
@@ -320,10 +350,18 @@ def deploy() -> None:
     console.print(f"Website: [bold]{config.get('website_name', 'Unknown')}[/bold]")
     console.print(f"Website ID: [dim]{website_id}[/dim]\n")
 
+    # Check if this is a build project
+    website_type = config.get('website_type', '')
+    build_folder = config.get('build_folder')
+    
     # Create ZIP
     with console.status("[bold green]Creating ZIP archive...", spinner="dots"):
         try:
-            zip_path = create_zip(project_dir)
+            if website_type == 'build' and build_folder:
+                console.print(f"[dim]Deploying build folder: {build_folder}[/dim]")
+                zip_path = create_zip_from_folder(project_dir, build_folder)
+            else:
+                zip_path = create_zip(project_dir)
             console.print(f"[green]✓ Created ZIP archive[/green]")
         except Exception as e:
             console.print(f"[red]✗ Error creating ZIP file: {e}[/red]")

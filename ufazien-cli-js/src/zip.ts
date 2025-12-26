@@ -64,3 +64,62 @@ export async function createZip(projectDir: string, outputPath?: string): Promis
   });
 }
 
+export async function createZipFromFolder(
+  projectDir: string,
+  folderName: string,
+  outputPath?: string
+): Promise<string> {
+  const projectPath = path.resolve(projectDir);
+  const buildFolderPath = path.join(projectPath, folderName);
+
+  if (!fs.existsSync(buildFolderPath)) {
+    throw new Error(`Build folder '${folderName}' not found. Please build your project first.`);
+  }
+
+  const stat = fs.statSync(buildFolderPath);
+  if (!stat.isDirectory()) {
+    throw new Error(`'${folderName}' is not a directory.`);
+  }
+
+  if (!outputPath) {
+    outputPath = path.join(projectPath, `temp-${Date.now()}.zip`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(outputPath!);
+    const archive = archiver('zip', {
+      zlib: { level: 9 },
+    });
+
+    output.on('close', () => {
+      resolve(outputPath!);
+    });
+
+    archive.on('error', (err: Error) => {
+      reject(err);
+    });
+
+    archive.pipe(output);
+
+    // Walk directory and add files from build folder
+    function walkDir(dir: string, baseDir: string): void {
+      const files = fs.readdirSync(dir);
+
+      for (const file of files) {
+        const filePath = path.join(dir, file);
+        const relativePath = path.relative(baseDir, filePath);
+
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+          walkDir(filePath, baseDir);
+        } else {
+          archive.file(filePath, { name: relativePath });
+        }
+      }
+    }
+
+    walkDir(buildFolderPath, buildFolderPath);
+    archive.finalize();
+  });
+}
+

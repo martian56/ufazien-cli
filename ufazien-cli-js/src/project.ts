@@ -186,6 +186,18 @@ __pycache__/
 venv/
 env/
 ENV/
+
+# For build projects (Vite/React/etc.):
+# Uncomment the line below and add your source folders to deploy only the build output
+# src/
+# public/
+# package.json
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+# tsconfig.json
+# vite.config.js
+# vite.config.ts
 `;
 
   const ufazienignorePath = path.join(projectDir, '.ufazienignore');
@@ -650,5 +662,85 @@ document.addEventListener('DOMContentLoaded', function() {
 `;
 
   fs.writeFileSync(path.join(jsDir, 'main.js'), jsContent);
+}
+
+export function createBuildProjectStructure(projectDir: string, websiteName: string): void {
+  // Create README with instructions
+  const readmeContent = `# ${websiteName}
+
+This project is configured for deployment to Ufazien Hosting.
+
+## Build and Deploy
+
+1. Build your project (this will create a \`dist\` or \`build\` folder):
+\`\`\`bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+\`\`\`
+
+2. Deploy to Ufazien:
+\`\`\`bash
+ufazienjs deploy
+\`\`\`
+
+The deployment will automatically upload the contents of your build folder.
+
+## Project Structure
+
+\`\`\`
+${path.basename(projectDir)}/
+├── dist/          # Your build output (Vite default)
+├── build/         # Your build output (React/Create React App default)
+├── .ufazien.json  # Ufazien configuration (auto-generated)
+└── README.md       # This file
+\`\`\`
+
+## Notes
+
+- Make sure your build output includes an \`index.html\` file
+- The build folder contents will be deployed automatically
+`;
+
+  const readmePath = path.join(projectDir, 'README.md');
+  if (!fs.existsSync(readmePath)) {
+    fs.writeFileSync(readmePath, readmeContent);
+  } else {
+    // Append Ufazien deployment section to existing README
+    const existingContent = fs.readFileSync(readmePath, 'utf-8');
+    
+    // Check if Ufazien section already exists
+    if (!existingContent.includes('Ufazien Hosting')) {
+      const ufazienSection = `
+
+---
+
+## Ufazien Deployment
+
+This project is configured for deployment to Ufazien Hosting.
+
+### Build and Deploy
+
+1. Build your project (this will create a \`dist\` or \`build\` folder):
+\`\`\`bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+\`\`\`
+
+2. Deploy to Ufazien:
+\`\`\`bash
+ufazienjs deploy
+\`\`\`
+
+The deployment will automatically upload the contents of your build folder.
+`;
+      fs.appendFileSync(readmePath, ufazienSection);
+    }
+  }
 }
 

@@ -185,6 +185,18 @@ __pycache__/
 venv/
 env/
 ENV/
+
+# For build projects (Vite/React/etc.):
+# Uncomment the line below and add your source folders to deploy only the build output
+# src/
+# public/
+# package.json
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+# tsconfig.json
+# vite.config.js
+# vite.config.ts
 """
 
     ufazienignore_path = Path(project_dir) / '.ufazienignore'
@@ -673,4 +685,88 @@ document.addEventListener('DOMContentLoaded', function() {
     js_path = js_dir / 'main.js'
     with open(js_path, 'w') as f:
         f.write(js_content)
+
+
+def create_build_project_structure(project_dir: str, website_name: str) -> None:
+    """Create build project structure for Vite/React/etc. projects."""
+    project_path = Path(project_dir)
+
+    # Create README with instructions
+    readme_content = f"""# {website_name}
+
+This project is configured for deployment to Ufazien Hosting.
+
+## Build and Deploy
+
+1. Build your project (this will create a `dist` or `build` folder):
+```bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+```
+
+2. Deploy to Ufazien:
+```bash
+ufazien deploy
+```
+
+The deployment will automatically upload the contents of your build folder.
+
+## Project Structure
+
+```
+{project_path.name}/
+├── dist/          # Your build output (Vite default)
+├── build/         # Your build output (React/Create React App default)
+├── .ufazien.json  # Ufazien configuration (auto-generated)
+└── README.md       # This file
+```
+
+## Notes
+
+- Make sure your build output includes an `index.html` file
+- The build folder contents will be deployed automatically
+"""
+    
+    readme_path = project_path / 'README.md'
+    if not readme_path.exists():
+        with open(readme_path, 'w', encoding='utf-8') as f:
+            f.write(readme_content)
+    else:
+        # Append Ufazien deployment section to existing README
+        with open(readme_path, 'r', encoding='utf-8') as f:
+            existing_content = f.read()
+        
+        # Check if Ufazien section already exists
+        if 'Ufazien Hosting' not in existing_content:
+            ufazien_section = f"""
+
+---
+
+## Ufazien Deployment
+
+This project is configured for deployment to Ufazien Hosting.
+
+### Build and Deploy
+
+1. Build your project (this will create a `dist` or `build` folder):
+```bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+```
+
+2. Deploy to Ufazien:
+```bash
+ufazien deploy
+```
+
+The deployment will automatically upload the contents of your build folder.
+"""
+            with open(readme_path, 'a', encoding='utf-8') as f:
+                f.write(ufazien_section)
 
