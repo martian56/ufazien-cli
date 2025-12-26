@@ -2,9 +2,11 @@
 Utility functions for the Ufazien CLI.
 """
 
+import hashlib
 import json
 import os
 import random
+import re
 import string
 import tempfile
 import zipfile
@@ -123,4 +125,23 @@ def create_zip(project_dir: str, output_path: Optional[str] = None) -> str:
                     continue
 
     return output_path
+    
+def subdomain_sanitize(subdomain: str) -> str:
+    name = subdomain.lower()
+
+    name = re.sub(r'[^a-z0-9-]', '_', name)
+
+
+    name = name.replace('-', '_')
+
+    name = name.strip('_')
+
+    name = re.sub(r'_+', '_', name)
+
+    if len(name) > 63:
+        hash_suffix = hashlib.sha1(name.encode()).hexdigest()[:8]
+        name = name[:54] + "_" + hash_suffix
+
+    return name
+         
 

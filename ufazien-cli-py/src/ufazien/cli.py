@@ -20,6 +20,7 @@ from ufazien.utils import (
     find_website_config,
     generate_random_alphabetic,
     save_website_config,
+    subdomain_sanitize
 )
 from ufazien.project import (
     create_config_file,
@@ -171,8 +172,9 @@ def create(
     if needs_database:
         with console.status("[bold green]Creating database...", spinner="dots"):
             try:
+                db_name_from_subdomain = subdomain_sanitize(subdomain)
                 random_chars = generate_random_alphabetic(6)
-                db_name = f"{subdomain}_{random_chars}_db"
+                db_name = f"{db_name_from_subdomain}_{random_chars}_db"
                 database_obj = client.create_database(
                     name=db_name,
                     db_type='mysql',
