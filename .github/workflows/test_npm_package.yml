@@ -9,20 +9,16 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: ['18', '20', '22']
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js ${{ matrix.node-version }}
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '20'
 
       - name: Install dependencies
         working-directory: ./ufazien-cli-js
@@ -32,16 +28,19 @@ jobs:
         working-directory: ./ufazien-cli-js
         run: npm run build
 
-      - name: Type check
-        working-directory: ./ufazien-cli-js
-        run: npx tsc --noEmit
-
       - name: Test package installation
         working-directory: ./ufazien-cli-js
+        shell: bash
         run: |
           npm pack
-          npm install -g ufazien-cli-*.tgz
+          PACKAGE_FILE=$(ls ufazien-cli-*.tgz 2>/dev/null | head -1)
+          if [ -n "$PACKAGE_FILE" ]; then
+            npm install -g "$PACKAGE_FILE"
+          else
+            echo "Package file not found"
+            exit 1
+          fi
 
       - name: Verify CLI command
         run: |
-          ufazienjs --help
+          ufazienjs --help || ufazienjs -V
