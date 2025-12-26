@@ -81,8 +81,9 @@ ufazienjs create
 
 The CLI will guide you through:
 - Website name and subdomain
-- Website type (Static or PHP)
+- Website type (Static, PHP, or Build)
 - Database creation (for PHP projects)
+- Build folder name (for Build projects)
 - Project structure generation
 
 ### 3. Deploy Your Website

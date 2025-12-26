@@ -131,7 +131,7 @@ program
   .description('Create a new website project')
   .option('-n, --name <name>', 'Website name')
   .option('-s, --subdomain <subdomain>', 'Subdomain')
-  .option('-t, --type <type>', 'Website type (static or php)')
+  .option('-t, --type <type>', 'Website type (static, php, or build)')
   .option('-d, --database', 'Create database (PHP only)')
   .action(async (options) => {
     console.log(chalk.cyan.bold('\n✨ Create New Website\n'));

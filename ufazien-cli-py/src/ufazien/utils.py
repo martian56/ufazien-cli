@@ -101,7 +101,8 @@ def create_zip(project_dir: str, output_path: Optional[str] = None) -> str:
     ufazienignore_path = project_path / '.ufazienignore'
 
     if output_path is None:
-        output_path = tempfile.mktemp(suffix='.zip')
+        fd, output_path = tempfile.mkstemp(suffix='.zip')
+        os.close(fd)
 
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(project_path):
@@ -139,7 +140,8 @@ def create_zip_from_folder(project_dir: str, folder_name: str, output_path: Opti
         raise Exception(f"'{folder_name}' is not a directory.")
 
     if output_path is None:
-        output_path = tempfile.mktemp(suffix='.zip')
+        fd, output_path = tempfile.mkstemp(suffix='.zip')
+        os.close(fd)
 
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(build_folder_path):

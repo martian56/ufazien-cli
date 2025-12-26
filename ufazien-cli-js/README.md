@@ -53,8 +53,9 @@ ufazienjs create
 
 The CLI will guide you through:
 - Website name and subdomain
-- Website type (Static or PHP)
+- Website type (Static, PHP, or Build)
 - Database creation (for PHP projects)
+- Build folder name (for Build projects)
 - Project structure generation
 
 ### Deploy Your Website
@@ -66,7 +67,7 @@ ufazienjs deploy
 ```
 
 This will:
-1. Create a ZIP archive of your project (excluding files in `.ufazienignore`)
+1. Create a ZIP archive of your project (excluding files in `.ufazienignore`, or from build folder for Build projects)
 2. Upload the files to your website
 3. Trigger the deployment
 
