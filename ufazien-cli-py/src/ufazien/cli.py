@@ -14,6 +14,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt, Confirm
 from rich.table import Table
 
+from ufazien import __version__
 from ufazien.client import UfazienAPIClient
 from ufazien.utils import (
     create_zip,
@@ -33,12 +34,29 @@ from ufazien.project import (
     create_build_project_structure,
 )
 
+console = Console()
+
 app = typer.Typer(
     name="ufazien",
     help="🚀 Ufazien CLI - Deploy web applications on Ufazien platform",
     add_completion=False,
 )
-console = Console()
+
+def version_callback(value: bool) -> None:
+    """Show version and exit."""
+    if value:
+        console.print(f"ufazien CLI version {__version__}")
+        raise typer.Exit()
+
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    version: bool = typer.Option(None, "--version", "-V", callback=version_callback, is_eager=True, help="Show version and exit"),
+) -> None:
+    """🚀 Ufazien CLI - Deploy web applications on Ufazien platform."""
+    if ctx.invoked_subcommand is None:
+        console.print(app.info.help)
+        raise typer.Exit()
 
 
 def require_auth(client: UfazienAPIClient) -> None:
@@ -95,7 +113,7 @@ def logout() -> None:
 def create(
     name: Optional[str] = typer.Option(None, "--name", "-n", help="Website name"),
     subdomain: Optional[str] = typer.Option(None, "--subdomain", "-s", help="Subdomain"),
-    website_type: Optional[str] = typer.Option(None, "--type", "-t", help="Website type (static or php)"),
+    website_type: Optional[str] = typer.Option(None, "--type", "-t", help="Website type (static, php, or build)"),
     database: bool = typer.Option(False, "--database", "-d", help="Create database (PHP only)"),
 ) -> None:
     """Create a new website project."""

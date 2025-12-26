@@ -2,7 +2,7 @@
 Ufazien CLI - Command-line interface for deploying web applications on Ufazien platform.
 """
 
-__version__ = "0.1.7"
+__version__ = "0.2.0"
 
 from ufazien.client import UfazienAPIClient
 
