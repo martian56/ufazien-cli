@@ -41,7 +41,11 @@ export function saveWebsiteConfig(projectDir: string, config: WebsiteConfig): vo
   }
 }
 
-export function shouldExcludeFile(filePath: string, ufazienignorePath: string): boolean {
+export function shouldExcludeFile(
+  filePath: string,
+  projectRoot: string,
+  ufazienignorePath: string
+): boolean {
   if (!fs.existsSync(ufazienignorePath)) {
     return false;
   }
@@ -52,11 +56,30 @@ export function shouldExcludeFile(filePath: string, ufazienignorePath: string): 
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith('#'));
 
+  const relPath = path.relative(projectRoot, filePath).split(path.sep).join('/');
+  if (!relPath || relPath.startsWith('..')) {
+    return false;
+  }
+  const segments = relPath.split('/');
+  const basename = segments[segments.length - 1];
+
   for (const pattern of ignorePatterns) {
-    if (filePath.includes(pattern) || filePath.endsWith(pattern)) {
-      return true;
+    if (pattern.endsWith('/')) {
+      const dir = pattern.slice(0, -1);
+      if (dir && segments.includes(dir)) {
+        return true;
+      }
+      continue;
     }
-    if (pattern.endsWith('/') && filePath.startsWith(pattern)) {
+
+    if (pattern.startsWith('*.') && !pattern.slice(2).includes('*')) {
+      if (basename.endsWith(pattern.slice(1))) {
+        return true;
+      }
+      continue;
+    }
+
+    if (basename === pattern || relPath === pattern) {
       return true;
     }
   }

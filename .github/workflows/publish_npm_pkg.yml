@@ -19,8 +19,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm to a version that supports trusted publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         working-directory: ./ufazien-cli-js
@@ -30,8 +33,6 @@ jobs:
         working-directory: ./ufazien-cli-js
         run: npm run build
 
-      - name: Publish to npm
+      - name: Publish to npm (trusted publisher, with provenance)
         working-directory: ./ufazien-cli-js
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+        run: npm publish --access public --provenance

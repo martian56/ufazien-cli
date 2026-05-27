@@ -77,7 +77,7 @@ def save_website_config(project_dir: str, config: Dict[str, Any]) -> None:
                 f.write('\n.ufazien.json\n')
 
 
-def should_exclude_file(file_path: Path, ufazienignore_path: Path) -> bool:
+def should_exclude_file(file_path: Path, project_root: Path, ufazienignore_path: Path) -> bool:
     """Check if a file should be excluded based on .ufazienignore."""
     if not ufazienignore_path.exists():
         return False
@@ -85,11 +85,30 @@ def should_exclude_file(file_path: Path, ufazienignore_path: Path) -> bool:
     with open(ufazienignore_path, 'r') as f:
         ignore_patterns = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
 
-    file_str = str(file_path)
+    try:
+        rel = file_path.relative_to(project_root)
+    except ValueError:
+        return False
+
+    rel_path = rel.as_posix()
+    if not rel_path or rel_path == '.':
+        return False
+    segments = rel_path.split('/')
+    basename = segments[-1]
+
     for pattern in ignore_patterns:
-        if pattern in file_str or file_str.endswith(pattern):
-            return True
-        if pattern.endswith('/') and file_str.startswith(pattern):
+        if pattern.endswith('/'):
+            dir_name = pattern[:-1]
+            if dir_name and dir_name in segments:
+                return True
+            continue
+
+        if pattern.startswith('*.') and '*' not in pattern[2:]:
+            if basename.endswith(pattern[1:]):
+                return True
+            continue
+
+        if basename == pattern or rel_path == pattern:
             return True
 
     return False
@@ -107,13 +126,13 @@ def create_zip(project_dir: str, output_path: Optional[str] = None) -> str:
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(project_path):
             dirs[:] = [d for d in dirs if not should_exclude_file(
-                Path(root) / d, ufazienignore_path
+                Path(root) / d, project_path, ufazienignore_path
             )]
 
             for file in files:
                 file_path = Path(root) / file
 
-                if should_exclude_file(file_path, ufazienignore_path):
+                if should_exclude_file(file_path, project_path, ufazienignore_path):
                     continue
 
                 if file_path.suffix == '.zip' and file_path.name == Path(output_path).name:
