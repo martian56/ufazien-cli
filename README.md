@@ -147,7 +147,7 @@ For larger changes, open an issue first to discuss the approach.
   Generate the embed URL at https://repobeats.axiom.co (sign in with GitHub,
   pick this repo, copy the SVG embed URL) and replace the placeholder below.
 -->
-![Repo activity](https://repobeats.axiom.co/api/embed/REPLACE_WITH_REPOBEATS_HASH.svg "Repobeats analytics image")
+![Alt](https://repobeats.axiom.co/api/embed/f0acaf6fbb77570c1c638b0389de620c9da92da9.svg "Repobeats analytics image")
 
 ## Contributors
 
