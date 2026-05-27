@@ -46,7 +46,7 @@ export async function createZip(projectDir: string, outputPath?: string): Promis
         }
 
         // Check if should be excluded
-        if (shouldExcludeFile(filePath, ufazienignorePath)) {
+        if (shouldExcludeFile(filePath, projectPath, ufazienignorePath)) {
           continue;
         }
 
