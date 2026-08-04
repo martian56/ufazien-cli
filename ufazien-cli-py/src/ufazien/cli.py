@@ -8,10 +8,7 @@ import time
 import getpass
 from typing import Optional
 
-# The UI uses emoji and box-drawing characters. On Windows the console defaults
-# to a legacy code page (cp1252), which cannot encode them, so every command -
-# including `ufazien --help` - died with UnicodeEncodeError before printing
-# anything. Force UTF-8 and degrade gracefully rather than crash.
+# Windows consoles default to cp1252, which cannot encode the emoji in the UI.
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")
@@ -135,10 +132,6 @@ def create(
     """Create a new website project."""
     console.print(Panel.fit("[bold cyan]✨ Create New Website[/bold cyan]", border_style="cyan"))
 
-    # Every prompt below is skipped when there is no terminal to answer it.
-    # Previously `create` asked for a description and for "create project
-    # structure?" even when every flag was supplied, so any scripted or CI use
-    # hung forever on a read from a closed stdin.
     noninteractive = yes or not sys.stdin.isatty()
 
     client = UfazienAPIClient()
@@ -308,13 +301,7 @@ def create(
                 console.print(f"[red]✗ Error creating database: {e}[/red]")
                 console.print("[dim]You can create a database later from the web dashboard.[/dim]")
 
-    # Persist .ufazien.json as soon as the remote resources exist.
-    #
-    # This used to happen at the very end, after the scaffolding prompts. If the
-    # user answered "no", hit Ctrl-C, or the process died in between, the
-    # website (and its database) existed on the server while nothing local
-    # recorded the id - so `deploy` could not find it, and re-running `create`
-    # silently provisioned a duplicate.
+    # Save before the scaffolding prompts so an abort cannot orphan the website.
     config = {
         'website_id': website['id'],
         'website_name': website['name'],
@@ -327,9 +314,7 @@ def create(
         config['build_folder'] = build_folder
     save_website_config(project_dir, config)
 
-    # Ask if user wants to create project structure.
-    # Scaffolding overwrites files such as index.html, so --no-structure exists
-    # for projects that already have their own.
+    # Scaffolding overwrites files like index.html.
     if no_structure:
         create_structure = False
     elif noninteractive:

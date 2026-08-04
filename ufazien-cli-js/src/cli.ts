@@ -141,10 +141,6 @@ program
   .action(async (options) => {
     console.log(chalk.cyan.bold('\n✨ Create New Website\n'));
 
-    // Every prompt below is skipped when there is no terminal to answer it.
-    // `create` previously asked for a description and for "create project
-    // structure?" even when every flag was supplied, so scripted or CI use
-    // hung forever waiting on a stdin nobody was attached to.
     const noninteractive: boolean = Boolean(options.yes) || !process.stdin.isTTY;
 
     const client = new UfazienAPIClient();
@@ -379,13 +375,7 @@ program
       }
 
       // Ask if user wants to create project structure
-      // Persist .ufazien.json as soon as the remote resources exist.
-      //
-      // This used to happen at the very end, after the scaffolding prompts. If
-      // the user answered "no", hit Ctrl-C, or the process died in between, the
-      // website (and its database) existed on the server while nothing local
-      // recorded the id - so `deploy` could not find it, and re-running
-      // `create` silently provisioned a duplicate.
+      // Save before the scaffolding prompts so an abort cannot orphan the website.
       const config: any = {
         website_id: website.id,
         website_name: website.name,
@@ -399,8 +389,7 @@ program
       }
       saveWebsiteConfig(projectDir, config);
 
-      // Scaffolding overwrites files such as index.html, so --no-structure
-      // exists for projects that already have their own.
+      // Scaffolding overwrites files like index.html.
       // commander maps --no-structure to options.structure === false.
       let createStructure = options.structure !== false;
       if (createStructure && !noninteractive) {
