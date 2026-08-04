@@ -134,8 +134,18 @@ program
   .option('-s, --subdomain <subdomain>', 'Subdomain')
   .option('-t, --type <type>', 'Website type (static, php, or build)')
   .option('-d, --database', 'Create database (PHP only)')
+  .option('-D, --description <description>', 'Website description')
+  .option('-b, --build-folder <folder>', 'Build output folder (build type only)')
+  .option('-y, --yes', 'Accept defaults instead of prompting (implied when not a TTY)')
+  .option('--no-structure', 'Skip boilerplate scaffolding, which overwrites files like index.html')
   .action(async (options) => {
     console.log(chalk.cyan.bold('\n✨ Create New Website\n'));
+
+    // Every prompt below is skipped when there is no terminal to answer it.
+    // `create` previously asked for a description and for "create project
+    // structure?" even when every flag was supplied, so scripted or CI use
+    // hung forever waiting on a stdin nobody was attached to.
+    const noninteractive: boolean = Boolean(options.yes) || !process.stdin.isTTY;
 
     const client = new UfazienAPIClient();
     requireAuth(client);
@@ -146,6 +156,11 @@ program
     const existingConfig = findWebsiteConfig(projectDir);
     if (existingConfig) {
       console.warn(chalk.yellow('⚠ Warning: .ufazien.json already exists in this directory.'));
+      if (noninteractive) {
+        console.error(chalk.red('✗ Refusing to overwrite an existing .ufazien.json without confirmation.'));
+        console.error(chalk.dim('Remove it first, or run interactively.'));
+        process.exit(1);
+      }
       const answer = await inquirer.prompt([
         {
           type: 'confirm',
@@ -162,6 +177,11 @@ program
 
     // Get website name
     let name = options.name;
+    if (!name && noninteractive) {
+      console.error(chalk.red('✗ Error: Website name is required.'));
+      console.error(chalk.dim('Pass --name when running non-interactively.'));
+      process.exit(1);
+    }
     if (!name) {
       const answer = await inquirer.prompt([
         {
@@ -176,6 +196,11 @@ program
 
     // Get subdomain
     let subdomain = options.subdomain;
+    if (!subdomain && noninteractive) {
+      console.error(chalk.red('✗ Error: Subdomain is required.'));
+      console.error(chalk.dim('Pass --subdomain when running non-interactively.'));
+      process.exit(1);
+    }
     if (!subdomain) {
       const answer = await inquirer.prompt([
         {
@@ -196,6 +221,9 @@ program
 
     // Get website type
     let websiteType = options.type;
+    if (!websiteType && noninteractive) {
+      websiteType = 'static';
+    }
     if (!websiteType) {
       const answer = await inquirer.prompt([
         {
@@ -220,6 +248,8 @@ program
     if (websiteType === 'php') {
       if (options.database) {
         needsDatabase = true;
+      } else if (noninteractive) {
+        needsDatabase = false;
       } else {
         const answer = await inquirer.prompt([
           {
@@ -232,26 +262,34 @@ program
         needsDatabase = answer.database;
       }
     } else if (websiteType === 'build') {
-      const answer = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'buildFolder',
-          message: 'What is your build folder named?',
-          default: 'dist',
-        },
-      ]);
-      buildFolder = answer.buildFolder || 'dist';
+      buildFolder = options.buildFolder;
+      if (!buildFolder && !noninteractive) {
+        const answer = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'buildFolder',
+            message: 'What is your build folder named?',
+            default: 'dist',
+          },
+        ]);
+        buildFolder = answer.buildFolder;
+      }
+      buildFolder = buildFolder || 'dist';
     }
 
-    const descAnswer = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'description',
-        message: 'Description (optional):',
-        default: '',
-      },
-    ]);
-    const description = descAnswer.description || undefined;
+    let description: string | undefined = options.description;
+    if (description === undefined && !noninteractive) {
+      const descAnswer = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'description',
+          message: 'Description (optional):',
+          default: '',
+        },
+      ]);
+      description = descAnswer.description;
+    }
+    description = description || undefined;
 
     // Create website (build projects use 'static' type on the backend)
     const apiWebsiteType = websiteType === 'build' ? 'static' : websiteType;
@@ -341,15 +379,41 @@ program
       }
 
       // Ask if user wants to create project structure
-      const createStructureAnswer = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'createStructure',
-          message: 'Create project structure?',
-          default: true,
-        },
-      ]);
-      const createStructure = createStructureAnswer.createStructure;
+      // Persist .ufazien.json as soon as the remote resources exist.
+      //
+      // This used to happen at the very end, after the scaffolding prompts. If
+      // the user answered "no", hit Ctrl-C, or the process died in between, the
+      // website (and its database) existed on the server while nothing local
+      // recorded the id - so `deploy` could not find it, and re-running
+      // `create` silently provisioned a duplicate.
+      const config: any = {
+        website_id: website.id,
+        website_name: website.name,
+        subdomain,
+        website_type: websiteType,
+        domain: website.domain.name,
+        database_id: database?.id,
+      };
+      if (buildFolder) {
+        config.build_folder = buildFolder;
+      }
+      saveWebsiteConfig(projectDir, config);
+
+      // Scaffolding overwrites files such as index.html, so --no-structure
+      // exists for projects that already have their own.
+      // commander maps --no-structure to options.structure === false.
+      let createStructure = options.structure !== false;
+      if (createStructure && !noninteractive) {
+        const createStructureAnswer = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'createStructure',
+            message: 'Create project structure?',
+            default: true,
+          },
+        ]);
+        createStructure = createStructureAnswer.createStructure;
+      }
 
       // Always create essential files (regardless of create_structure choice)
       process.stdout.write(chalk.green('\nCreating essential files...'));
@@ -428,19 +492,6 @@ program
       }
 
       // Save config
-      const config: any = {
-        website_id: website.id,
-        website_name: website.name,
-        subdomain,
-        website_type: websiteType,
-        domain: website.domain.name,
-        database_id: database?.id,
-      };
-      if (buildFolder) {
-        config.build_folder = buildFolder;
-      }
-      saveWebsiteConfig(projectDir, config);
-
       // Success message
       console.log(chalk.green.bold('\n✓ Website setup complete!'));
       console.log(chalk.bold('\nNext steps:'));

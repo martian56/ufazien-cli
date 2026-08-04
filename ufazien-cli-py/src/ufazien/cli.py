@@ -3,9 +3,20 @@ Ufazien CLI - Main entry point using Typer and Rich.
 """
 
 import os
+import sys
 import time
 import getpass
 from typing import Optional
+
+# The UI uses emoji and box-drawing characters. On Windows the console defaults
+# to a legacy code page (cp1252), which cannot encode them, so every command -
+# including `ufazien --help` - died with UnicodeEncodeError before printing
+# anything. Force UTF-8 and degrade gracefully rather than crash.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):  # pragma: no cover
+        pass
 
 import typer
 from rich.console import Console
@@ -116,9 +127,19 @@ def create(
     subdomain: Optional[str] = typer.Option(None, "--subdomain", "-s", help="Subdomain"),
     website_type: Optional[str] = typer.Option(None, "--type", "-t", help="Website type (static, php, or build)"),
     database: bool = typer.Option(False, "--database", "-d", help="Create database (PHP only)"),
+    description: Optional[str] = typer.Option(None, "--description", "-D", help="Website description"),
+    build_folder_opt: Optional[str] = typer.Option(None, "--build-folder", "-b", help="Build output folder (build type only)"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Accept defaults instead of prompting (implied when not a TTY)"),
+    no_structure: bool = typer.Option(False, "--no-structure", help="Skip boilerplate scaffolding, which overwrites files like index.html"),
 ) -> None:
     """Create a new website project."""
     console.print(Panel.fit("[bold cyan]✨ Create New Website[/bold cyan]", border_style="cyan"))
+
+    # Every prompt below is skipped when there is no terminal to answer it.
+    # Previously `create` asked for a description and for "create project
+    # structure?" even when every flag was supplied, so any scripted or CI use
+    # hung forever on a read from a closed stdin.
+    noninteractive = yes or not sys.stdin.isatty()
 
     client = UfazienAPIClient()
     require_auth(client)
@@ -129,21 +150,27 @@ def create(
     existing_config = find_website_config(project_dir)
     if existing_config:
         console.print("[yellow]⚠ Warning: .ufazien.json already exists in this directory.[/yellow]")
+        if noninteractive:
+            console.print("[red]✗ Refusing to overwrite an existing .ufazien.json without confirmation.[/red]")
+            console.print("[dim]Remove it first, or run interactively.[/dim]")
+            raise typer.Exit(1)
         if not Confirm.ask("Do you want to create a new website?", default=False):
             console.print("[dim]Cancelled.[/dim]")
             return
 
     # Get website name
-    if not name:
+    if not name and not noninteractive:
         name = Prompt.ask("Website name")
     if not name:
         console.print("[red]✗ Error: Website name is required.[/red]")
+        console.print("[dim]Pass --name when running non-interactively.[/dim]")
         raise typer.Exit(1)
 
     # Get subdomain
-    if not subdomain:
+    if not subdomain and not noninteractive:
         subdomain = Prompt.ask("Subdomain (choose a unique one)")
     if not subdomain:
+        console.print("[dim]Pass --subdomain when running non-interactively.[/dim]")
         console.print("[red]✗ Error: Subdomain is required.[/red]")
         raise typer.Exit(1)
 
@@ -152,6 +179,8 @@ def create(
         raise typer.Exit(1)
 
     # Get website type
+    if not website_type and noninteractive:
+        website_type = 'static'
     if not website_type:
         console.print("\n[bold]Website type:[/bold]")
         console.print("1. Static (HTML/CSS/JavaScript)")
@@ -174,14 +203,19 @@ def create(
     if website_type == 'php':
         if database:
             needs_database = True
+        elif noninteractive:
+            needs_database = False
         else:
             needs_database = Confirm.ask("Do you want a database?", default=True)
     elif website_type == 'build':
-        build_folder = Prompt.ask("What is your build folder named?", default="dist")
+        build_folder = build_folder_opt
+        if not build_folder and not noninteractive:
+            build_folder = Prompt.ask("What is your build folder named?", default="dist")
         if not build_folder:
             build_folder = "dist"
 
-    description = Prompt.ask("Description (optional)", default="", show_default=False)
+    if description is None and not noninteractive:
+        description = Prompt.ask("Description (optional)", default="", show_default=False)
 
     # Create website (build projects use 'static' type on the backend)
     api_website_type = 'static' if website_type == 'build' else website_type
@@ -274,8 +308,34 @@ def create(
                 console.print(f"[red]✗ Error creating database: {e}[/red]")
                 console.print("[dim]You can create a database later from the web dashboard.[/dim]")
 
-    # Ask if user wants to create project structure
-    create_structure = Confirm.ask("\nCreate project structure?", default=True)
+    # Persist .ufazien.json as soon as the remote resources exist.
+    #
+    # This used to happen at the very end, after the scaffolding prompts. If the
+    # user answered "no", hit Ctrl-C, or the process died in between, the
+    # website (and its database) existed on the server while nothing local
+    # recorded the id - so `deploy` could not find it, and re-running `create`
+    # silently provisioned a duplicate.
+    config = {
+        'website_id': website['id'],
+        'website_name': website['name'],
+        'subdomain': subdomain,
+        'website_type': website_type,
+        'domain': website['domain']['name'],
+        'database_id': database_obj['id'] if database_obj else None
+    }
+    if build_folder:
+        config['build_folder'] = build_folder
+    save_website_config(project_dir, config)
+
+    # Ask if user wants to create project structure.
+    # Scaffolding overwrites files such as index.html, so --no-structure exists
+    # for projects that already have their own.
+    if no_structure:
+        create_structure = False
+    elif noninteractive:
+        create_structure = True
+    else:
+        create_structure = Confirm.ask("\nCreate project structure?", default=True)
     
     # Always create essential files (regardless of create_structure choice)
     with console.status("[bold green]Creating essential files...", spinner="dots"):
@@ -338,19 +398,6 @@ def create(
                 console.print(f"\n[yellow]ℹ Build Project Setup:[/yellow]")
                 console.print(f"  1. Build your project (creates {build_folder} folder)")
                 console.print(f"  2. Run [cyan]ufazien deploy[/cyan] to deploy the {build_folder} folder")
-
-    # Save config
-    config = {
-        'website_id': website['id'],
-        'website_name': website['name'],
-        'subdomain': subdomain,
-        'website_type': website_type,
-        'domain': website['domain']['name'],
-        'database_id': database_obj['id'] if database_obj else None
-    }
-    if build_folder:
-        config['build_folder'] = build_folder
-    save_website_config(project_dir, config)
 
     # Success message
     console.print("\n[bold green]✓ Website setup complete![/bold green]")
